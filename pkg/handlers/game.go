@@ -7,10 +7,10 @@ import (
 	"net/http"
 	"time"
 
-	"spotify-bingo/pkg/database"
-	"spotify-bingo/pkg/generator"
-	"spotify-bingo/pkg/models"
-	"spotify-bingo/pkg/spotify"
+	"github.com/kirkegaard/go-spotify-bingo/pkg/database"
+	"github.com/kirkegaard/go-spotify-bingo/pkg/generator"
+	"github.com/kirkegaard/go-spotify-bingo/pkg/models"
+	"github.com/kirkegaard/go-spotify-bingo/pkg/spotify"
 )
 
 type GameHandler struct {

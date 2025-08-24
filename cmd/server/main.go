@@ -5,9 +5,9 @@ import (
 	"net/http"
 
 	"github.com/joho/godotenv"
-	"spotify-bingo/pkg/config"
-	"spotify-bingo/pkg/database"
-	"spotify-bingo/pkg/handlers"
+	"github.com/kirkegaard/go-spotify-bingo/pkg/config"
+	"github.com/kirkegaard/go-spotify-bingo/pkg/database"
+	"github.com/kirkegaard/go-spotify-bingo/pkg/handlers"
 )
 
 func main() {

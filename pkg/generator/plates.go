@@ -5,7 +5,7 @@ import (
 	"math/rand"
 	"time"
 
-	"spotify-bingo/pkg/models"
+	"github.com/kirkegaard/go-spotify-bingo/pkg/models"
 )
 
 type Generator struct {
