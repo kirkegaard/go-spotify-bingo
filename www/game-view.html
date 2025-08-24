@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spotify Bingo - Game</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 8px;">
+                    <circle cx="12" cy="8" r="4"/>
+                    <path d="M20.5 14.3c0 1.5-2.2 2.7-5.5 2.7s-5.5-1.2-5.5-2.7c0-1.5 2.2-2.7 5.5-2.7s5.5 1.2 5.5 2.7z"/>
+                    <path d="M12 8v8"/>
+                </svg>
+                Spotify Bingo
+            </h1>
+            <div id="game-info">
+                <h2 id="playlist-name">Loading...</h2>
+                <p>Game Code: <span id="game-code"></span></p>
+            </div>
+        </header>
+
+        <main>
+            <div id="plates-container">
+                <div class="plates-grid">
+                    <!-- Plates will be generated here -->
+                </div>
+            </div>
+
+            <div class="game-controls">
+                <button id="print-plates" class="btn-secondary">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 6px;">
+                        <polyline points="6,9 6,2 18,2 18,9"/>
+                        <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
+                        <rect x="6" y="14" width="12" height="8"/>
+                    </svg>
+                    Print My Plates
+                </button>
+                <button id="print-all-plates" class="btn-secondary" style="display: none;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 6px;">
+                        <polyline points="6,9 6,2 18,2 18,9"/>
+                        <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
+                        <rect x="6" y="14" width="12" height="8"/>
+                    </svg>
+                    Print All Plates
+                </button>
+                <button id="view-all-plates" class="btn-secondary" style="display: none;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 6px;">
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                        <circle cx="9" cy="7" r="4"/>
+                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                        <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                    </svg>
+                    View All Plates
+                </button>
+                <button id="share-game" class="btn-primary">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 6px;">
+                        <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
+                        <polyline points="16,6 12,2 8,6"/>
+                        <line x1="12" y1="2" x2="12" y2="15"/>
+                    </svg>
+                    Share Game
+                </button>
+                <a href="/" class="btn-secondary">← Back to Home</a>
+            </div>
+
+            <div id="share-modal" class="modal" style="display: none;">
+                <div class="modal-content">
+                    <span class="close">&times;</span>
+                    <h3>Share This Game</h3>
+                    <p>Share this code with players:</p>
+                    <div class="game-code-display">
+                        <input type="text" id="share-code" readonly>
+                        <button id="copy-code" class="btn-primary">Copy</button>
+                    </div>
+                    <p>Or share this URL:</p>
+                    <div class="game-code-display">
+                        <input type="text" id="share-url" readonly>
+                        <button id="copy-url" class="btn-primary">Copy</button>
+                    </div>
+                    <div id="qr-code"></div>
+                </div>
+            </div>
+
+            <div id="loading" class="section" style="display: none;">
+                <div class="spinner"></div>
+                <p>Loading game...</p>
+            </div>
+
+            <div id="error-message" class="error" style="display: none;"></div>
+        </main>
+    </div>
+
+    <script src="/js/plates.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const gameCode = urlParams.get('code');
+            
+            if (gameCode) {
+                loadGame(gameCode);
+            } else {
+                showError('No game code provided');
+            }
+        });
+    </script>
+</body>
+</html>

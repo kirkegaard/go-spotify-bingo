@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spotify Bingo</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>
+                Spotify Bingo
+            </h1>
+            <p>Play bingo with your Spotify playlists!</p>
+        </header>
+
+        <main>
+            <!-- Join Game - Always Visible -->
+            <div class="section">
+                <h2>Join Existing Game</h2>
+                <p>Have a game code? Join the fun!</p>
+                <form id="join-game-form">
+                    <div class="form-group">
+                        <label for="game-code">Game Code:</label>
+                        <input type="text" id="game-code" placeholder="123456" maxlength="6" required>
+                    </div>
+                    <button type="submit" class="btn-primary">Join Game</button>
+                </form>
+            </div>
+
+            <div id="auth-section" class="section" style="display: none;">
+                <h2>Create Your Own Game</h2>
+                <p>Connect your Spotify account to create games with your playlists.</p>
+                <button id="spotify-login" class="btn-primary">Connect with Spotify</button>
+            </div>
+
+            <div id="authenticated-section" class="section" style="display: none;">
+                <h2>Create New Game</h2>
+                <form id="create-game-form">
+                    <div class="form-group">
+                        <label for="playlist-select">Choose Playlist:</label>
+                        <select id="playlist-select" required>
+                            <option value="">Select a playlist...</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="playlist-url">Or enter public playlist URL:</label>
+                        <input type="url" id="playlist-url" placeholder="https://open.spotify.com/playlist/...">
+                        <small>Leave empty to use selected playlist above</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="content-type">Plate Content Type:</label>
+                        <select id="content-type" required>
+                            <option value="mixed">Mixed (tracks & artists)</option>
+                            <option value="tracks">Only track names</option>
+                            <option value="artists">Only artist names</option>
+                            <option value="combined">Track & Artist combined</option>
+                        </select>
+                        <small>Choose what appears on the bingo plates</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="player-count">Number of Players:</label>
+                        <input type="number" id="player-count" min="1" max="20" value="4" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="plates-per-player">Plates per Player:</label>
+                        <input type="number" id="plates-per-player" min="1" max="10" value="3" required>
+                        <small>Each player will receive this many bingo plates</small>
+                    </div>
+
+                    <button type="submit" class="btn-primary">Create Game</button>
+                </form>
+            </div>
+
+            <div id="loading" class="section" style="display: none;">
+                <div class="spinner"></div>
+                <p>Loading...</p>
+            </div>
+
+            <div id="error-message" class="error" style="display: none;"></div>
+        </main>
+    </div>
+
+    <script src="/js/auth.js"></script>
+    <script src="/js/game.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            checkAuthStatus();
+        });
+    </script>
+</body>
+</html>
