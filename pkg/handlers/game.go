@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/kirkegaard/go-spotify-bingo/pkg/database"
@@ -142,36 +143,57 @@ func (h *GameHandler) CreateGame(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	plateFields, err := h.generator.GeneratePlates(playlistData, req.PlatesPerPlayer, req.ContentType)
+	// Generate plates for all players (reuse totalPlates from validation above)
+	var plateFields []models.PlateFields
+	plateFields, err = h.generator.GeneratePlates(playlistData, totalPlates, req.ContentType)
 	if err != nil {
 		http.Error(w, "Failed to generate plates", http.StatusInternalServerError)
 		return
 	}
 
-	var plates []models.Plate
-	for i, fields := range plateFields {
-		fieldsJSON, _ := fields.ToJSON()
-		plate := models.Plate{
-			GameCode:      gameCode,
-			UserSessionID: session.SessionID,
-			PlateNumber:   i + 1,
-			Fields:        fields,
-		}
+	var creatorPlates []models.Plate
+	plateNumber := 1
 
-		_, err = h.db.Exec(`INSERT INTO plates (game_code, user_session_id, plate_number, fields) VALUES (?, ?, ?, ?)`,
-			plate.GameCode, plate.UserSessionID, plate.PlateNumber, fieldsJSON)
-		if err != nil {
-			http.Error(w, "Failed to save plates", http.StatusInternalServerError)
-			return
-		}
+	for playerNum := 1; playerNum <= req.PlayerCount; playerNum++ {
+		for plateInSet := 1; plateInSet <= req.PlatesPerPlayer; plateInSet++ {
+			fields := plateFields[plateNumber-1]
+			fieldsJSON, _ := fields.ToJSON()
 
-		plates = append(plates, plate)
+			var userSessionID string
+			if playerNum == 1 {
+				// First player is the creator
+				userSessionID = session.SessionID
+			} else {
+				// Use placeholder for unassigned players
+				userSessionID = fmt.Sprintf("PLAYER_%d", playerNum)
+			}
+
+			plate := models.Plate{
+				GameCode:      gameCode,
+				UserSessionID: userSessionID,
+				PlateNumber:   plateInSet,
+				Fields:        fields,
+			}
+
+			_, err = h.db.Exec(`INSERT INTO plates (game_code, user_session_id, plate_number, fields) VALUES (?, ?, ?, ?)`,
+				plate.GameCode, plate.UserSessionID, plate.PlateNumber, fieldsJSON)
+			if err != nil {
+				http.Error(w, "Failed to save plates", http.StatusInternalServerError)
+				return
+			}
+
+			// Only add creator's plates to the response
+			if playerNum == 1 {
+				creatorPlates = append(creatorPlates, plate)
+			}
+			plateNumber++
+		}
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(CreateGameResponse{
 		GameCode: gameCode,
-		Plates:   plates,
+		Plates:   creatorPlates,
 	})
 }
 
@@ -268,37 +290,68 @@ func (h *GameHandler) JoinGame(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	plateFields, err := h.generator.GeneratePlates(playlistData, platesPerPlayer, contentType)
+	// Find the first available unassigned player slot
+	var assignedPlates []models.Plate
+	rows, err = h.db.Query(`SELECT user_session_id, plate_number, fields FROM plates WHERE game_code = ? AND user_session_id LIKE 'PLAYER_%' ORDER BY user_session_id LIMIT ?`, gameCode, platesPerPlayer)
 	if err != nil {
-		http.Error(w, "Failed to generate plates", http.StatusInternalServerError)
+		http.Error(w, "Failed to find available plates", http.StatusInternalServerError)
+		return
+	}
+	defer rows.Close()
+
+	var platesToAssign []models.Plate
+	for rows.Next() {
+		var userID string
+		var plateNumber int
+		var fieldsJSON string
+		err := rows.Scan(&userID, &plateNumber, &fieldsJSON)
+		if err != nil {
+			continue
+		}
+
+		fields, err := models.PlateFieldsFromJSON(fieldsJSON)
+		if err != nil {
+			continue
+		}
+
+		plate := models.Plate{
+			GameCode:      gameCode,
+			UserSessionID: userID, // Keep original placeholder for now
+			PlateNumber:   plateNumber,
+			Fields:        fields,
+		}
+		platesToAssign = append(platesToAssign, plate)
+
+		if len(platesToAssign) >= platesPerPlayer {
+			break
+		}
+	}
+
+	if len(platesToAssign) < platesPerPlayer {
+		http.Error(w, "Game is full - no available player slots", http.StatusBadRequest)
 		return
 	}
 
-	var plates []models.Plate
-	for i, fields := range plateFields {
-		fieldsJSON, _ := fields.ToJSON()
-		plate := models.Plate{
-			GameCode:      gameCode,
-			UserSessionID: sessionCookie.Value,
-			PlateNumber:   i + 1,
-			Fields:        fields,
-		}
-
-		_, err = h.db.Exec(`INSERT INTO plates (game_code, user_session_id, plate_number, fields) VALUES (?, ?, ?, ?)`,
-			plate.GameCode, plate.UserSessionID, plate.PlateNumber, fieldsJSON)
+	// Assign the plates to the joining player
+	for i, plate := range platesToAssign {
+		_, err = h.db.Exec(`UPDATE plates SET user_session_id = ? WHERE game_code = ? AND user_session_id = ? AND plate_number = ?`,
+			sessionCookie.Value, gameCode, plate.UserSessionID, plate.PlateNumber)
 		if err != nil {
-			http.Error(w, "Failed to save plates", http.StatusInternalServerError)
+			http.Error(w, "Failed to assign plates", http.StatusInternalServerError)
 			return
 		}
 
-		plates = append(plates, plate)
+		// Update the plate for response
+		plate.UserSessionID = sessionCookie.Value
+		plate.PlateNumber = i + 1 // Renumber for this player (1, 2, 3, etc.)
+		assignedPlates = append(assignedPlates, plate)
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(JoinGameResponse{
 		GameCode:     gameCode,
 		PlaylistName: playlistData.PlaylistName,
-		Plates:       plates,
+		Plates:       assignedPlates,
 	})
 }
 
@@ -404,19 +457,24 @@ func (h *GameHandler) GetAllPlates(w http.ResponseWriter, r *http.Request) {
 
 	// Convert to response format
 	var allPlates []PlayerPlates
-	playerNum := 1
 	for userID, plates := range playerPlatesMap {
 		// Generate a friendly name for each player
-		playerName := fmt.Sprintf("Player %d", playerNum)
+		var playerName string
 		if userID == creatorID {
 			playerName = "Game Creator"
+		} else if strings.HasPrefix(userID, "PLAYER_") {
+			// Extract player number from placeholder
+			playerNum := strings.TrimPrefix(userID, "PLAYER_")
+			playerName = fmt.Sprintf("Player %s (Not joined)", playerNum)
+		} else {
+			// Real player who has joined
+			playerName = fmt.Sprintf("Player (Joined)")
 		}
 
 		allPlates = append(allPlates, PlayerPlates{
 			PlayerID: playerName,
 			Plates:   plates,
 		})
-		playerNum++
 	}
 
 	w.Header().Set("Content-Type", "application/json")
